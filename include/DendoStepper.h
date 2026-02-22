@@ -197,6 +197,12 @@ public:
      */
     esp_err_t runAbsMm(uint32_t position);
 
+    /** @brief run motor at new speed
+     *  @param newSpeed new speed in steps per second; Will replace the speed set by setSpeed, but not the accelerations
+     *  @return ESP_OK
+     */
+    esp_err_t DendoStepper::runNewSpeed(float newSpeed);
+
     /** @brief sets motor speed
      *  @param speed speed in steps per second
      *  @param accT acceleration time in ms

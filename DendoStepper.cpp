@@ -112,6 +112,21 @@ esp_err_t DendoStepper::runPos(int32_t relative)
     return gptimer_start(timer_handle);
 }
 
+esp_err_t DendoStepper::runNewSpeed(float newSpeed)
+{
+    if (ctrl.status == DISABLED)
+    {
+        enableMotor();
+    }
+    ctrl.runInfinite = true;
+    setDir(newSpeed>0);
+    calcNewSpeed(newSpeed);
+    alarm_cfg.alarm_count = ctrl.stepInterval;
+    gptimer_set_alarm_action(timer_handle, &alarm_cfg);
+    gptimer_enable(timer_handle);
+    return gptimer_start(timer_handle);
+}
+
 esp_err_t DendoStepper::runPosMm(int32_t relative)
 {
     if (ctrl.stepsPerMm == 0)
@@ -350,4 +365,22 @@ void DendoStepper::calc(uint32_t targetSteps)
     ctrl.stepsToGo = targetSteps;
 
     STEP_LOGI("calc", "acc end:%lu coastend:%lu stepstogo:%lu speed:%f acc:%f int: %lu", ctrl.accEnd, ctrl.coastEnd, ctrl.stepsToGo, ctrl.speed, ctrl.acc, ctrl.stepInterval);
+}
+
+void DendoStepper::calcNewSpeed(float newSpeed)
+{
+    float deltaspeed = newSpeed - ctrl.currentSpeed;
+    ctrl.accSteps = 0.5 * ctrl.acc * (deltaspeed / ctrl.acc) * (deltaspeed / ctrl.acc);
+
+    ctrl.accEnd = ctrl.accSteps;
+    ctrl.speed = newSpeed;
+    ctrl.targetSpeed = newSpeed;
+
+    ctrl.accInc = deltaspeed / (double)ctrl.accSteps;
+
+    ctrl.currentSpeed += ctrl.accInc;
+
+    ctrl.stepInterval = TIMER_F / ctrl.accInc;
+
+    STEP_LOGI("calc new speed", "acc end:%lu speed:%f delta:%f acc:%f int: %lu", ctrl.accEnd, ctrl.speed, deltaspeed, ctrl.acc, ctrl.stepInterval);
 }
