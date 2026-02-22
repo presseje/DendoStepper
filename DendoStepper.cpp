@@ -69,21 +69,25 @@ void DendoStepper::init()
         .clk_src = GPTIMER_CLK_SRC_DEFAULT,
         .direction = GPTIMER_COUNT_UP,
         .resolution_hz = TIMER_F,
+        .intr_priority = 0,
+        .flags = { .intr_shared = false },
     };
 
     timer_conf.flags.intr_shared = false;
 
     // calculate stepsPerRot
-    ctrl.stepsPerRot = (360.0 / conf.stepAngle) * conf.miStep;
+    ctrl.stepsPerRot = static_cast<uint16_t>(
+        (360.0 / conf.stepAngle) * static_cast<double>(conf.miStep)
+    );
 
     STEP_LOGI("DendoStepper", "Steps per one rotation:%d", ctrl.stepsPerRot);
 
     ESP_ERROR_CHECK(gptimer_new_timer(&timer_conf, &timer_handle));
 
-    gptimer_event_callbacks_t cb_group;
+    gptimer_event_callbacks_t cb_group = {};
     cb_group.on_alarm = xISRwrap;
     alarm_cfg.flags.auto_reload_on_alarm = 1;
-    gptimer_register_event_callbacks(timer_handle, &cb_group, this);
+    ESP_ERROR_CHECK(gptimer_register_event_callbacks(timer_handle, &cb_group, this));
 }
 
 esp_err_t DendoStepper::runPos(int32_t relative)
@@ -267,7 +271,7 @@ void DendoStepper::setDir(bool state)
 /* Timer callback, used for generating pulses and calculating speed profile in real time */
 bool DendoStepper::xISR(gptimer_t *timer, const gptimer_alarm_event_data_t *data)
 {
-    GPIO.out_w1ts = (1ULL << conf.stepPin);
+    gpio_ll_set_level(&GPIO, static_cast<gpio_num_t>(conf.stepPin), 1);
     // add and substract one step
 
     ctrl.stepCnt++;
@@ -289,7 +293,7 @@ bool DendoStepper::xISR(gptimer_t *timer, const gptimer_alarm_event_data_t *data
         ctrl.status = IDLE;
         ctrl.stepCnt = 0;
         gptimer_disable(timer_handle);
-        GPIO.out_w1tc = (1ULL << conf.stepPin);
+        gpio_ll_set_level(&GPIO, static_cast<gpio_num_t>(conf.stepPin), 0);
         return 0;
     }
 
@@ -311,7 +315,7 @@ bool DendoStepper::xISR(gptimer_t *timer, const gptimer_alarm_event_data_t *data
 
     ctrl.stepInterval = TIMER_F / ctrl.currentSpeed;
     // set alarm to calculated interval and disable pin
-    GPIO.out_w1tc = (1ULL << conf.stepPin);
+    gpio_ll_set_level(&GPIO, static_cast<gpio_num_t>(conf.stepPin), 0);
     alarm_cfg.alarm_count = ctrl.stepInterval;
     gptimer_set_alarm_action(timer_handle, &alarm_cfg);
     return 1;

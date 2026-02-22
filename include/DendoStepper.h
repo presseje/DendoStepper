@@ -106,8 +106,11 @@ private:
     TaskHandle_t enTask;
     gptimer_handle_t timer_handle;  /** timer handle */
     gptimer_alarm_config_t alarm_cfg = {
-        .reload_count = 0
+        .alarm_count = 0,
+        .reload_count = 0,
+        .flags = { .auto_reload_on_alarm = true },
     };
+
     uint64_t currentPos = 0; // absolute position
     bool timerStarted = 0;
 
