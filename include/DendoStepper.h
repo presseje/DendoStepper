@@ -120,6 +120,7 @@ private:
      *  @param target target position
      */
     void calc(uint32_t);
+    void calcNewSpeed(float newSpeed);
 
     /** @brief sets En GPIO
      *  @param state 0-LOW,1-HIGH
@@ -201,7 +202,7 @@ public:
      *  @param newSpeed new speed in steps per second; Will replace the speed set by setSpeed, but not the accelerations
      *  @return ESP_OK
      */
-    esp_err_t DendoStepper::runNewSpeed(float newSpeed);
+    esp_err_t runNewSpeed(float newSpeed);
 
     /** @brief sets motor speed
      *  @param speed speed in steps per second

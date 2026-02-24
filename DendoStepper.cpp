@@ -118,8 +118,9 @@ esp_err_t DendoStepper::runNewSpeed(float newSpeed)
     {
         enableMotor();
     }
+    gptimer_stop(timer_handle);
+    gptimer_disable(timer_handle);
     ctrl.runInfinite = true;
-    setDir(newSpeed>0);
     calcNewSpeed(newSpeed);
     alarm_cfg.alarm_count = ctrl.stepInterval;
     gptimer_set_alarm_action(timer_handle, &alarm_cfg);
@@ -328,7 +329,8 @@ bool DendoStepper::xISR(gptimer_t *timer, const gptimer_alarm_event_data_t *data
         ctrl.status = COAST; // we are coasting
     }
 
-    ctrl.stepInterval = TIMER_F / ctrl.currentSpeed;
+    setDir(ctrl.currentSpeed>0);
+    ctrl.stepInterval = abs(TIMER_F / ctrl.currentSpeed);
     // set alarm to calculated interval and disable pin
     gpio_ll_set_level(&GPIO, static_cast<gpio_num_t>(conf.stepPin), 0);
     alarm_cfg.alarm_count = ctrl.stepInterval;
@@ -361,7 +363,7 @@ void DendoStepper::calc(uint32_t targetSteps)
 
     ctrl.currentSpeed = ctrl.accInc;
 
-    ctrl.stepInterval = TIMER_F / ctrl.currentSpeed;
+    ctrl.stepInterval = TIMER_F / ctrl.accInc;
     ctrl.stepsToGo = targetSteps;
 
     STEP_LOGI("calc", "acc end:%lu coastend:%lu stepstogo:%lu speed:%f acc:%f int: %lu", ctrl.accEnd, ctrl.coastEnd, ctrl.stepsToGo, ctrl.speed, ctrl.acc, ctrl.stepInterval);
@@ -370,7 +372,9 @@ void DendoStepper::calc(uint32_t targetSteps)
 void DendoStepper::calcNewSpeed(float newSpeed)
 {
     float deltaspeed = newSpeed - ctrl.currentSpeed;
+    STEP_LOGI("calc new speed", "newSpeed:%f, ctrl.currentSpeed:%f", newSpeed, ctrl.currentSpeed);
     ctrl.accSteps = 0.5 * ctrl.acc * (deltaspeed / ctrl.acc) * (deltaspeed / ctrl.acc);
+    if (ctrl.accSteps < 1) ctrl.accSteps = 1;
 
     ctrl.accEnd = ctrl.accSteps;
     ctrl.speed = newSpeed;
@@ -380,7 +384,7 @@ void DendoStepper::calcNewSpeed(float newSpeed)
 
     ctrl.currentSpeed += ctrl.accInc;
 
-    ctrl.stepInterval = TIMER_F / ctrl.accInc;
+    ctrl.stepInterval = abs(TIMER_F / ctrl.currentSpeed);
 
     STEP_LOGI("calc new speed", "acc end:%lu speed:%f delta:%f acc:%f int: %lu", ctrl.accEnd, ctrl.speed, deltaspeed, ctrl.acc, ctrl.stepInterval);
 }
