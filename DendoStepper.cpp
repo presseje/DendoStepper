@@ -1,7 +1,7 @@
 #include "DendoStepper.h"
 #include "esp_log.h"
 
-#define STEP_DEBUG
+//#define STEP_DEBUG
 
 #ifdef STEP_DEBUG
 #define STEP_LOGI(...) ESP_LOGI(__VA_ARGS__)
